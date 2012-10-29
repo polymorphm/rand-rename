@@ -1,7 +1,7 @@
 rand-rename
 ===========
 
-`rand-mv` is micro-utility for renaming files to random name.
+`rand-rename` is micro-utility for renaming files to random name.
 
 Status
 ------
