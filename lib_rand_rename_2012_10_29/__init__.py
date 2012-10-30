@@ -61,6 +61,7 @@ def main():
     
     parser.add_argument(
             'target',
+            nargs='?',
             metavar='TARGET-PATH',
             help='target directory path',
             )
@@ -79,13 +80,14 @@ def main():
             
             print('scheduled: {!r}'.format(path))
     
-    os.makedirs(args.target, exist_ok=True)
-    
     prefix = args.prefix if args.prefix is not None else ''
+    target = args.target if args.target is not None else args.source
     get_new_path = lambda name: os.path.join(
-            args.target, '{}.{}'.format(name, args.ext))
+            target, '{}.{}'.format(name, args.ext))
     assert args.rand_size > 0
     get_rand = lambda: rand(args.rand_size)
+    
+    os.makedirs(target, exist_ok=True)
     
     for path in scheduled_list:
         if prefix:
