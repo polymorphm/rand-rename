@@ -20,6 +20,7 @@ assert str is not bytes
 import argparse
 import os, os.path
 import random
+import itertools
 
 def rand(size):
     r = str(random.randrange(10 ** size))
@@ -45,6 +46,13 @@ def main():
             type=int,
             default=5,
             help='use custom random size. default is 5',
+            )
+    
+    parser.add_argument(
+            '--slice-size',
+            metavar='SLICE-SIZE',
+            type=int,
+            help='slice to directories',
             )
     
     parser.add_argument(
@@ -82,22 +90,54 @@ def main():
     
     prefix = args.prefix if args.prefix is not None else ''
     target = args.target if args.target is not None else args.source
-    get_new_path = lambda name: os.path.join(
-            target, '{}.{}'.format(name, args.ext))
+    get_new_path = lambda scheduled_target, name: os.path.join(
+            scheduled_target, '{}.{}'.format(name, args.ext))
     assert args.rand_size > 0
     get_rand = lambda: rand(args.rand_size)
     
-    os.makedirs(target, exist_ok=True)
+    assert args.slice_size is None or args.slice_size > 0
+    slice_size = args.slice_size
     
-    for path in scheduled_list:
-        if prefix:
-            new_name = '{}-{}-{}'.format(prefix, get_rand(), get_rand())
-        else:
-            new_name = '{}-{}'.format(get_rand(), get_rand())
+    def get_scheduled_iter():
+        orig_scheduled_iter = iter(scheduled_list)
         
-        while os.path.exists(get_new_path(new_name)):
-            new_name = '{}-{}'.format(new_name, get_rand())
+        if slice_size is None:
+            yield orig_scheduled_iter, target
+            return
         
-        os.rename(path, get_new_path(new_name))
+        for i in itertools.count():
+            scheduled_iter = itertools.islice(orig_scheduled_iter, slice_size)
+            scheduled_target = os.path.join(target, str(i))
+            
+            yield scheduled_iter, scheduled_target
+    
+    for scheduled_iter, scheduled_target in get_scheduled_iter():
+        is_empty = True
         
-        print('renamed: {!r} => {!r}'.format(path, get_new_path(new_name)))
+        for path in scheduled_iter:
+            if is_empty:
+                is_empty = False
+                
+                os.makedirs(scheduled_target, exist_ok=True)
+                
+                print('created dir: {!r}'.format(scheduled_target))
+            
+            if prefix:
+                new_name = '{}-{}-{}'.format(prefix, get_rand(), get_rand())
+            else:
+                new_name = '{}-{}'.format(get_rand(), get_rand())
+            
+            new_path = get_new_path(scheduled_target, new_name)
+            
+            while os.path.exists(new_path):
+                new_name = '{}-{}'.format(new_name, get_rand())
+                new_path = get_new_path(scheduled_target, new_name)
+            
+            os.rename(path, new_path)
+            
+            print('renamed: {!r} => {!r}'.format(path, new_path))
+        
+        if is_empty:
+            break
+    
+    print('done!')
